@@ -6,8 +6,6 @@ class DAG
 
   Edge = Struct.new(:origin, :destination, :properties)
 
-  attr_reader :vertices, :edges
-
   #
   # Create a new Directed Acyclic Graph
   #
@@ -17,7 +15,19 @@ class DAG
   def initialize(options = {})
     @vertices = []
     @edges = []
+    @check_on_add = options[:check_on_add] == nil ? true : options[:check_on_add]
+    @checked = true
     @mixin = options[:mixin]
+  end
+
+  def vertices
+    raise 'graph was not checked before calling vertices' unless @checked
+    @vertices
+  end
+
+  def edges
+    raise 'graph was not checked before calling edges' unless @checked
+    @edges
   end
 
   def add_vertex(payload = {})
@@ -36,7 +46,11 @@ class DAG
     raise ArgumentError.new('Destination must be a vertex in this DAG') unless
       is_my_vertex?(destination)
     raise ArgumentError.new('A DAG must not have cycles') if origin == destination
-    raise ArgumentError.new('A DAG must not have cycles') if destination.has_path_to?(origin)
+    if @check_on_add
+      raise ArgumentError.new('A DAG must not have cycles') if destination.has_path_to?(origin)
+    else
+      @checked = false
+    end
     Edge.new(origin, destination, properties).tap {|e| @edges << e }
   end
 
@@ -82,6 +96,43 @@ class DAG
     end
 
     return result
+  end
+
+  # Code taken from:
+  # http://www.geeksforgeeks.org/detect-cycle-in-a-graph/
+  def is_cyclic_util(v)
+    @visited = @visited + [v]
+    @rec_stack = @rec_stack + [v]
+
+    for dest in v.outgoing_edges.map(&:destination)
+      if !@visited.include?(dest)
+        if self.is_cyclic_util(dest)
+          return true
+        end
+      elsif @rec_stack.include?(dest)
+        return true
+      end
+    end
+
+    @rec_stack = @rec_stack - [v]
+    return false
+  end
+
+  def is_acyclic?
+    @checked = true
+
+    @visited = []
+    @rec_stack = []
+    for v in @vertices
+      if !@visited.include?(v)
+        if self.is_cyclic_util(v)
+          @checked = false
+          return false
+        end
+      end
+    end
+
+    return true
   end
 
   private
