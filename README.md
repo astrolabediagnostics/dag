@@ -46,6 +46,29 @@ v1.successors                        # => [v2, v3]
 
 See the specs for more detailed usage scenarios.
 
+## Lenient Cycle Checking
+
+By default, the DAG will check for cycles whenever an edge is added. This could lead to performance issues in large DAGs. In order to avoid that, turn off automatic checking, and check manually when done with graph creation:
+
+```ruby
+dag = DAG.new(check_on_add: false)
+
+v1 = dag.add_vertex
+v2 = dag.add_vertex
+
+dag.add_edge from: v1, to: v2
+
+dag.vertices
+dag.is_acyclic?
+dag.vertices
+
+dag.add_edge from: v2, to: v1
+
+dag.vertices
+dag.is_acyclic?
+dag.vertices
+```
+
 ## Compatibility
 
 Tested with Ruby 1.9.x, JRuby, Rubinius.
